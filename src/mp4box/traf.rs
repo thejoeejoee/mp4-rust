@@ -8,7 +8,9 @@ use crate::mp4box::{tfdt::TfdtBox, tfhd::TfhdBox, trun::TrunBox};
 pub struct TrafBox {
     pub tfhd: TfhdBox,
     pub tfdt: Option<TfdtBox>,
-    pub trun: Option<TrunBox>,
+
+    #[serde(rename = "trun")]
+    pub truns: Vec<TrunBox>,
 }
 
 impl TrafBox {
@@ -19,7 +21,12 @@ impl TrafBox {
     pub fn get_size(&self) -> u64 {
         let mut size = HEADER_SIZE;
         size += self.tfhd.box_size();
-        if let Some(ref trun) = self.trun {
+
+        if let Some(ref tfdt) = self.tfdt {
+            size += tfdt.box_size();
+        }
+
+        for trun in self.truns.iter() {
             size += trun.box_size();
         }
         size
@@ -51,7 +58,7 @@ impl<R: Read + Seek> ReadBox<&mut R> for TrafBox {
 
         let mut tfhd = None;
         let mut tfdt = None;
-        let mut trun = None;
+        let mut truns: Vec<TrunBox> = Vec::new();
 
         let mut current = reader.stream_position()?;
         let end = start + size;
@@ -73,7 +80,7 @@ impl<R: Read + Seek> ReadBox<&mut R> for TrafBox {
                     tfdt = Some(TfdtBox::read_box(reader, s)?);
                 }
                 BoxType::TrunBox => {
-                    trun = Some(TrunBox::read_box(reader, s)?);
+                    truns.push(TrunBox::read_box(reader, s)?);
                 }
                 _ => {
                     // XXX warn!()
@@ -93,7 +100,7 @@ impl<R: Read + Seek> ReadBox<&mut R> for TrafBox {
         Ok(TrafBox {
             tfhd: tfhd.unwrap(),
             tfdt,
-            trun,
+            truns,
         })
     }
 }

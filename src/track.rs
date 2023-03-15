@@ -233,7 +233,7 @@ impl Mp4Track {
         if !self.trafs.is_empty() {
             let mut sample_count = 0u32;
             for traf in self.trafs.iter() {
-                if let Some(ref trun) = traf.trun {
+                for trun in traf.truns.iter() {
                     sample_count = sample_count
                         .checked_add(trun.sample_count)
                         .expect("attempt to sum trun sample_count with overflow");
@@ -370,7 +370,7 @@ impl Mp4Track {
         let global_idx = sample_id - 1;
         let mut offset = 0;
         for traf_idx in 0..self.trafs.len() {
-            if let Some(trun) = &self.trafs[traf_idx].trun {
+            for trun in self.trafs[traf_idx].truns.iter() {
                 let sample_count = trun.sample_count;
                 if sample_count > (global_idx - offset) {
                     return Some((traf_idx, (global_idx - offset) as _));
@@ -384,41 +384,43 @@ impl Mp4Track {
     }
 
     fn sample_size(&self, sample_id: u32) -> Result<u32> {
-        if !self.trafs.is_empty() {
-            if let Some((traf_idx, sample_idx)) = self.find_traf_idx_and_sample_idx(sample_id) {
-                if let Some(size) = self.trafs[traf_idx]
-                    .trun
-                    .as_ref()
-                    .unwrap()
-                    .sample_sizes
-                    .get(sample_idx)
-                {
-                    Ok(*size)
-                } else {
-                    Err(Error::EntryInTrunNotFound(
-                        self.track_id(),
-                        BoxType::TrunBox,
-                        sample_id,
-                    ))
-                }
-            } else {
-                Err(Error::BoxInTrafNotFound(self.track_id(), BoxType::TrafBox))
-            }
-        } else {
-            let stsz = &self.trak.mdia.minf.stbl.stsz;
-            if stsz.sample_size > 0 {
-                return Ok(stsz.sample_size);
-            }
-            if let Some(size) = stsz.sample_sizes.get(sample_id as usize - 1) {
-                Ok(*size)
-            } else {
-                Err(Error::EntryInStblNotFound(
-                    self.track_id(),
-                    BoxType::StszBox,
-                    sample_id,
-                ))
-            }
-        }
+        return Ok(0);
+        // TODO
+        // if !self.trafs.is_empty() {
+        //     if let Some((traf_idx, sample_idx)) = self.find_traf_idx_and_sample_idx(sample_id) {
+        //         if let Some(size) = self.trafs[traf_idx]
+        //             .trun
+        //             .as_ref()
+        //             .unwrap()
+        //             .sample_sizes
+        //             .get(sample_idx)
+        //         {
+        //             Ok(*size)
+        //         } else {
+        //             Err(Error::EntryInTrunNotFound(
+        //                 self.track_id(),
+        //                 BoxType::TrunBox,
+        //                 sample_id,
+        //             ))
+        //         }
+        //     } else {
+        //         Err(Error::BoxInTrafNotFound(self.track_id(), BoxType::TrafBox))
+        //     }
+        // } else {
+        //     let stsz = &self.trak.mdia.minf.stbl.stsz;
+        //     if stsz.sample_size > 0 {
+        //         return Ok(stsz.sample_size);
+        //     }
+        //     if let Some(size) = stsz.sample_sizes.get(sample_id as usize - 1) {
+        //         Ok(*size)
+        //     } else {
+        //         Err(Error::EntryInStblNotFound(
+        //             self.track_id(),
+        //             BoxType::StszBox,
+        //             sample_id,
+        //         ))
+        //     }
+        // }
     }
 
     fn total_sample_size(&self) -> u64 {
